@@ -21,7 +21,7 @@ if (!defined('CMSIMPLE_XH_VERSION')) {
 
 if (function_exists('caldav_calendar') 
     && XH_wantsPluginAdministration('caldav_calendar') 
-    || isset($visitors_online) && $visitors_online == 'true')
+    || isset($caldav_calendar) && $caldav_calendar == 'true')
 {
 
     $o .= print_plugin_admin('off');
