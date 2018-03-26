@@ -1,0 +1,35 @@
+#tplcaldav_calendar {
+}
+
+.tplcaldav_calendarin {
+	padding: 0 0 5px 0;
+	margin: 0;
+}
+
+.tplcaldav_loc,.tplcaldav_date,.tplcaldav_time,.tplcaldav_text {
+	margin-left: 20px;
+}
+
+.tplcaldav_title {
+  font-weight: bold;
+  letter-spacing: 1px;
+  border-bottom: solid 1px #999;
+}
+
+.tplcaldav_date {
+  float: left;
+}
+
+.tplcaldav_time {
+  font-size: 80%;
+  float: left;
+}
+
+.tplcaldav_loc {
+  font-size: 90%;
+  clear: both;
+}
+
+.tplcaldav_text {
+  font-style: italic;
+}
