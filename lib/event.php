@@ -25,7 +25,6 @@ class Event {
 			$fields = explode("\n",$block);
 			$blockName = array_shift($fields);
 
-
 			// 
 			if (count($fields)) {
 
@@ -33,75 +32,74 @@ class Event {
 				$this->data[$blockName] = [];
 
 
+				$newData = [];
+
 				# insert fields in block
 				foreach (array_filter($fields) as $field) {
 
-					$kv = explode(":",$field);
-					
+					$line = $this->split_line($field);
 
-					# split key with parameter
-					if (count($param = explode(";",$kv[0])) > 1) {
-
-						$kv[0] = $param[0];
-						$paramData = explode("=",$param[1]);
-
-						if (count($paramData) > 1) {
-							$ary = [ $kv[1] ];
-							$ary[$paramData[0]] = $paramData[1];
-
-							$kv[1] = $ary;
-						}
+					// new command
+					if ($line["name"]) {
+						$current = $line["name"];
 					}
-					
 
-					#not END
-					if ($kv[0] != "END") {
-
-						// check for numbers
-						preg_match("$([0-9]+)$",$kv[0],$matches);
-
-						// check for uppercase
-						if (strtoupper($kv[0]) == $kv[0] and count($matches) == 0) {
-
-							$current = $kv[0];
-							$kv[1] = str_replace("\\n", "<br>", $kv[1]);
-
-							# field exists
-							if (isset($this->data[$blockName][$kv[0]])) {
-
-								# is already multivalued
-								if (is_array($this->data[$blockName][$kv[0]])) {
-									array_push($this->data[$blockName][$kv[0]],$kv[1]);
-								}
-
-								# convert value to array and add new value
-								else {
-									$this->data[$blockName][$kv[0]] = [$this->data[$blockName][$kv[0]]];
-									array_push($this->data[$blockName][$kv[0]],$kv[1]);
-								}
-							}
-							else {
-								$this->data[$blockName][$kv[0]] = $kv[1];
-							}
-						}
-
-						// add new line
-						else {
-
-							// scip first char of new line
-						$this->data[$blockName][$current] .= substr($kv[0],1);
-
-							// \n to br
-							$this->data[$blockName][$current] = str_replace("\\n", "<br>", $this->data[$blockName][$current]);
-							$this->data[$blockName][$current] = str_replace("\\", "", $this->data[$blockName][$current]);
-						}
+					// add value
+					if ($line["value"]) {
+						$newData[$current] .= $line["value"];
 					}
+
 				}
+
+				$this->data[$blockName] = $newData;
 			}
 		}
 	}
 
 
+	function split_line($string) {
+
+		$line = ["name"=>false, "param"=>false, "value"=>false];
+
+		// split field from value
+		$stringAry = explode(":", $string);
+
+		// split field from parameter
+		$paramAry = explode(";", $stringAry[0]);
+
+		// field is upper case => is field name
+		if ($paramAry[0] == strtoupper($paramAry[0])) {
+
+			$line["name"] = array_shift($paramAry);
+			array_shift($stringAry);
+			$line["value"] .= $this->special_chars(implode(":", $stringAry));
+
+			if (isset($paramAry[1])) {
+				$line["param"] = $paramAry[1];
+			}
+		}
+
+		else {
+			$line["value"] .= $this->special_chars(implode(":", $stringAry));
+		}
+
+		return $line;
+	}
+
+
+
+	// remove / or \ from special characters
+	function special_chars($string) {
+
+		$ret = str_replace("\\n", "<br>", trim($string));
+		$ret = stripslashes($ret);
+
+		return $ret;
+	}
+
+
+
+	// get value from block / field
 	function get ($block = "",$field = "") {
 
 		if (!$block)
@@ -135,18 +133,32 @@ class Event {
 
 
 	function render () {
+
 		$ret = "";
 
 		$title = $this->get("vevent","summary");
 		$location = $this->get("vevent","location");
-		$description = $this->get("vevent","description");
+		$description = $this->render_url($this->get("vevent","description"));
+		$description = $this->render_mail($description);
 
-		$start_date = dateFromISO($this->get("vevent","dtstart"));
-		$end_date = dateFromISO($this->get("vevent","dtend"));
+		// get start/end date
+		$start = $this->get("vevent","dtstart");
+		$end = $this->get("vevent","dtend");
 
-		$start_time = timeFromISO($this->get("vevent","dtstart"));
-		$end_time = timeFromISO($this->get("vevent","dtend"));
+		// correct end when all day
+		if (strlen($start) == 8) {
+			$end -= 1;
+		}
 
+		// separate date/time
+		$start_date = dateFromISO($start);
+		$end_date = dateFromISO($end);
+
+		$start_time = timeFromISO($start);
+		$end_time = timeFromISO($end);
+
+
+		// write date ID in header
 		$ret .= "<div class='tplcaldav_calendarin' id='" . $start_date["year"] . "-" . $start_date["mon"] . "-" . $start_date["date"] . "'>";
 
 			$fields = explode(",", CALDAV_FIELDS);
@@ -193,24 +205,87 @@ class Event {
 						break;
 
 					case "location":
-			# location
-			if ($location) {
-				$location = str_replace("<br>", ", ", $location);
-				$ret .= "<div class='tplcaldav_loc'><table><tr><td valign='top'>Ort: </td><td valign='top'>{$location}</td></tr></table></div>";
-			}
+						# location
+						if ($location) {
+							$location = str_replace("<br>", ", ", $location);
+							$ret .= "<div class='tplcaldav_loc'><table><tr><td valign='top'>Ort: </td><td valign='top'>{$location}</td></tr></table></div>";
+						}
 						break;
+
 				}
 			}
 
 			$ret .= "<div style='clear:both'></div>";
 
 			# description
-			$ret .= "<p class='tplcaldav_text'>" . $this->get("vevent","description") . "</p>";
+			$ret .= "<p class='tplcaldav_text'>" . $description . "</p>";
 
 
 		$ret .= "</div>";
 
 		return $ret;
+	}
+
+
+
+	// convert urls to links
+	function render_url($string) {
+
+		return $this->insert_link($string, "|https?\:\/\/[a-z0-9\/\#\_\.\-\?]+|i", '<a target="_blank" href="{}">{}</a>');
+
+	}
+
+
+	// convert email to link
+	function render_mail($string) {
+
+		return $this->insert_link($string, "|[a-z0-9\.\_\-]+\@[a-z0-9\.\_\-]+|i", '<a href="mailto:{}">{}</a>');
+
+	}
+
+
+	// insert links using a regular expression and format string
+	// {} in the format is replaced by the value
+	function insert_link($string, $pattern, $format) {
+
+		$retArray = [];
+		$ret = "";
+
+		$cursor = 0;
+		$length = strlen($string);
+
+		// get all http/https links
+
+		while (preg_match($pattern, $string, $match, PREG_OFFSET_CAPTURE)) {
+
+			// save previous part
+			if ($match[0][1] > 0) {
+				array_push($retArray, substr($string, 0, $match[0][1]));
+
+				// remote string
+				$string = substr($string, $match[0][1]);
+			}
+
+			// insert value in format
+			$linkString = $format;
+			$linkString = str_replace("{}", $match[0][0], $linkString);
+
+			// $linkString = '<a target="_blank" href="'.$match[0][0].'">'.$match[0][0].'</a>';
+
+			// add link to array
+			array_push($retArray, $linkString);
+
+			// remove url from string
+			$string = substr($string, strlen($match[0][0]));
+
+		}
+
+		// add last snippet
+		if (strlen($string)) {
+			array_push($retArray, $string);
+		}
+
+		return implode("", $retArray);
 	}
 
 

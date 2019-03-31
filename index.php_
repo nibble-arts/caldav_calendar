@@ -17,7 +17,7 @@ define('CALDAV_CAL_NOT_FOUND', $plugin_tx['caldav_calendar']['cal_not_found']);
 
 
 
-function caldav_calendar($calendar, $cnt = 0, $format="") {
+function caldav_calendar($calendar, $format="") {
 
 	$ret = "";
 	$cal = new SimpleCalDAVClient();
@@ -50,7 +50,7 @@ function caldav_calendar($calendar, $cnt = 0, $format="") {
 				$ret .= "<div id='plge_calendar'>";
 
 					$i = 0;
-					while (($event = $data->get()) && (($i < CALDAV_MAX_DAYS || CALDAV_MAX_DAYS == 0) && ($cnt == 0 || $i < $cnt))) {
+					while (($event = $data->get()) && ($i < CALDAV_MAX_DAYS || CALDAV_MAX_DAYS == 0)) {
 						$ret .= $event->render();
 						$i++;
 					}

@@ -19,9 +19,16 @@ if (!defined('CMSIMPLE_XH_VERSION')) {
     exit;
 }
 
+/*
+ * Register the plugin menu items.
+ */
+if (function_exists('XH_registerStandardPluginMenuItems')) {
+    XH_registerStandardPluginMenuItems(true);
+}
+
 if (function_exists('caldav_calendar') 
     && XH_wantsPluginAdministration('caldav_calendar') 
-    || isset($caldav_calendar) && $caldav_calendar == 'true')
+    || isset($visitors_online) && $visitors_online == 'true')
 {
 
     $o .= print_plugin_admin('off');
